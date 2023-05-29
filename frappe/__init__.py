@@ -1514,10 +1514,14 @@ def setup_module_map():
 		local.module_app, local.app_modules = {}, {}
 		for app in get_all_apps(with_internal_apps=True):
 			local.app_modules.setdefault(app, [])
-			for module in get_module_list(app):
-				module = scrub(module)
-				local.module_app[module] = app
-				local.app_modules[app].append(module)
+			try:
+				for module in get_module_list(app):
+					module = scrub(module)
+					local.module_app[module] = app
+					local.app_modules[app].append(module)
+			except:
+				print("Warning - Unable to list modules for app ", app)
+				pass
 
 		if conf.db_name:
 			_cache.set_value("app_modules", local.app_modules)
