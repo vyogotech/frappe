@@ -87,7 +87,8 @@
   "api_key",
   "generate_keys",
   "column_break_65",
-  "api_secret"
+  "api_secret",
+  "onboarding_status"
  ],
  "fields": [
   {
@@ -206,6 +207,7 @@
    "read_only": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "role_profile_name",
    "fieldtype": "Link",
    "label": "Role Profile",
@@ -321,6 +323,7 @@
    "hidden": 1,
    "label": "Reset Password Key",
    "no_copy": 1,
+   "permlevel": 1,
    "print_hide": 1,
    "read_only": 1
   },
@@ -456,7 +459,7 @@
    "read_only": 1
   },
   {
-   "default": "1",
+   "default": "2",
    "fieldname": "simultaneous_sessions",
    "fieldtype": "Int",
    "label": "Simultaneous Sessions"
@@ -615,13 +618,14 @@
    "options": "Module Profile"
   },
   {
-    "description": "Stores the datetime when the last reset password key was generated.",
-    "fieldname": "last_reset_password_key_generated_on",
-    "fieldtype": "Datetime",
-    "hidden": 1,
-    "label": "Last Reset Password Key Generated On",
-    "read_only": 1
-   },
+   "description": "Stores the datetime when the last reset password key was generated.",
+   "fieldname": "last_reset_password_key_generated_on",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Last Reset Password Key Generated On",
+   "permlevel": 1,
+   "read_only": 1
+  },
   {
    "fieldname": "column_break_75",
    "fieldtype": "Column Break"
@@ -660,6 +664,13 @@
    "fieldname": "follow_assigned_documents",
    "fieldtype": "Check",
    "label": "Auto follow documents that are assigned to you"
+  },
+  {
+   "default": "{}",
+   "fieldname": "onboarding_status",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Onboarding Status"
   }
  ],
  "icon": "fa fa-user",
@@ -722,7 +733,7 @@
    "link_fieldname": "user"
   }
  ],
- "modified": "2022-09-19 16:05:46.485242",
+ "modified": "2024-02-11 13:16:29.574666",
  "modified_by": "Administrator",
  "module": "Core",
  "name": "User",

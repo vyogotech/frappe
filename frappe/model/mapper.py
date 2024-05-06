@@ -62,8 +62,8 @@ def get_mapped_doc(
 	postprocess=None,
 	ignore_permissions=False,
 	ignore_child_tables=False,
+	cached=False,
 ):
-
 	apply_strict_user_permissions = frappe.get_system_settings("apply_strict_user_permissions")
 
 	# main
@@ -79,7 +79,10 @@ def get_mapped_doc(
 	):
 		target_doc.raise_no_permission_to("create")
 
-	source_doc = frappe.get_doc(from_doctype, from_docname)
+	if cached:
+		source_doc = frappe.get_cached_doc(from_doctype, from_docname)
+	else:
+		source_doc = frappe.get_doc(from_doctype, from_docname)
 
 	if not ignore_permissions:
 		if not source_doc.has_permission("read"):
@@ -132,6 +135,9 @@ def get_mapped_doc(
 							True if target_doc.get(target_parentfield) else False
 						)
 
+					if table_map.get("ignore"):
+						continue
+
 					if table_map.get("add_if_empty") and row_exists_for_parentfield.get(target_parentfield):
 						continue
 
@@ -143,13 +149,10 @@ def get_mapped_doc(
 	if postprocess:
 		postprocess(source_doc, target_doc)
 
+	target_doc.run_method("after_mapping", source_doc)
 	target_doc.set_onload("load_after_mapping", True)
 
-	if (
-		apply_strict_user_permissions
-		and not ignore_permissions
-		and not target_doc.has_permission("create")
-	):
+	if apply_strict_user_permissions and not ignore_permissions and not target_doc.has_permission("create"):
 		target_doc.raise_no_permission_to("create")
 
 	return target_doc

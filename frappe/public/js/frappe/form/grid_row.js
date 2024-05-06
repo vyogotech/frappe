@@ -176,6 +176,7 @@ export default class GridRow {
 				// renumber and refresh
 				let data = me.grid.get_data();
 				data.move(me.doc.idx - 1, values.move_to - 1);
+				me.frm.dirty();
 
 				// renum idx
 				for (let i = 0; i < data.length; i++) {
@@ -247,8 +248,9 @@ export default class GridRow {
 
 		// index (1, 2, 3 etc)
 		if (!this.row_index && !this.show_search) {
-			// REDESIGN-TODO: Make translation contextual, this No is Number
-			var txt = this.doc ? this.doc.idx : __("No.");
+			const txt = this.doc
+				? this.doc.idx
+				: __("No.", null, "Title of the 'row number' column");
 
 			this.row_check = $(
 				`<div class="row-check sortable-handle col">
@@ -303,8 +305,6 @@ export default class GridRow {
 				}, 500)
 			);
 			frappe.utils.only_allow_num_decimal(this.row_index.find("input"));
-		} else {
-			this.row_index.find("span").html(txt);
 		}
 
 		this.setup_columns();
@@ -335,10 +335,10 @@ export default class GridRow {
 				this.open_form_button = $('<div class="col"></div>').appendTo(this.row);
 
 				if (!this.configure_columns) {
+					const edit_msg = __("Edit", "", "Edit grid row");
 					this.open_form_button = $(`
-						<div class="btn-open-row">
+						<div class="btn-open-row" data-toggle="tooltip" data-placement="right" title="${edit_msg}">
 							<a>${frappe.utils.icon("edit", "xs")}</a>
-							<div class="hidden-xs edit-grid-row">${__("Edit")}</div>
 						</div>
 					`)
 						.appendTo(this.open_form_button)
@@ -346,6 +346,8 @@ export default class GridRow {
 							me.toggle_view();
 							return false;
 						});
+
+					this.open_form_button.tooltip({ delay: { show: 600, hide: 100 } });
 				}
 
 				if (this.is_too_small()) {
@@ -461,6 +463,7 @@ export default class GridRow {
 					fieldname: "fields",
 					options: docfields,
 					columns: 2,
+					sort_options: false,
 				},
 			],
 		});
@@ -495,12 +498,31 @@ export default class GridRow {
 
 		const show_field = (f) => always_allow.includes(f) || !blocked_fields.includes(f);
 
+		// First, add selected fields
+		selected_fields.forEach((selectedField) => {
+			const selectedColumn = this.docfields.find(
+				(column) => column.fieldname === selectedField
+			);
+			if (selectedColumn && !selectedColumn.hidden && show_field(selectedColumn.fieldtype)) {
+				fields.push({
+					label: selectedColumn.label,
+					value: selectedColumn.fieldname,
+					checked: true,
+				});
+			}
+		});
+
+		// Then, add the rest of the fields
 		this.docfields.forEach((column) => {
-			if (!column.hidden && show_field(column.fieldtype)) {
+			if (
+				!selected_fields.includes(column.fieldname) &&
+				!column.hidden &&
+				show_field(column.fieldtype)
+			) {
 				fields.push({
 					label: column.label,
 					value: column.fieldname,
-					checked: selected_fields ? in_list(selected_fields, column.fieldname) : false,
+					checked: false,
 				});
 			}
 		});
@@ -762,7 +784,8 @@ export default class GridRow {
 
 	show_search_row() {
 		// show or remove search columns based on grid rows
-		this.show_search = this.show_search && this.grid?.data?.length >= 20;
+		this.show_search =
+			this.show_search && (this.grid?.data?.length >= 20 || this.grid.filter_applied);
 		!this.show_search && this.wrapper.remove();
 		return this.show_search;
 	}
@@ -962,7 +985,17 @@ export default class GridRow {
 				}
 				var col = this;
 				let first_input_field = $(col).find('input[type="Text"]:first');
-				first_input_field.trigger("focus");
+				let input_in_focus = false;
+
+				$(col)
+					.find("input[type='text']")
+					.each(function () {
+						if ($(this).is(":focus")) {
+							input_in_focus = true;
+						}
+					});
+
+				!input_in_focus && first_input_field.trigger("focus");
 
 				if (event.pointerType == "touch") {
 					first_input_field.length && on_input_focus(first_input_field);

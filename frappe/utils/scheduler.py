@@ -10,13 +10,13 @@ Events:
 
 # imports - standard imports
 import os
+import random
 import time
 
 # imports - module imports
 import frappe
-from frappe.installer import update_site_config
 from frappe.utils import cint, get_datetime, get_sites, now_datetime
-from frappe.utils.background_jobs import get_jobs
+from frappe.utils.background_jobs import get_jobs, set_niceness
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -35,6 +35,7 @@ def start_scheduler():
 	Specify scheduler_interval in seconds in common_site_config.json"""
 
 	tick = cint(frappe.get_conf().scheduler_tick_interval) or 60
+	set_niceness()
 
 	while True:
 		time.sleep(tick)
@@ -51,6 +52,9 @@ def enqueue_events_for_all_sites():
 	with frappe.init_site():
 		sites = get_sites()
 
+	# Sites are sorted in alphabetical order, shuffle to randomize priorities
+	random.shuffle(sites)
+
 	for site in sites:
 		try:
 			enqueue_events_for_site(site=site)
@@ -60,9 +64,7 @@ def enqueue_events_for_all_sites():
 
 def enqueue_events_for_site(site):
 	def log_and_raise():
-		error_message = "Exception in Enqueue Events for Site {}\n{}".format(
-			site, frappe.get_traceback()
-		)
+		error_message = f"Exception in Enqueue Events for Site {site}\n{frappe.get_traceback()}"
 		frappe.logger("scheduler").error(error_message)
 
 	try:
@@ -91,7 +93,7 @@ def enqueue_events(site):
 		frappe.flags.enqueued_jobs = []
 		queued_jobs = get_jobs(site=site, key="job_type").get(site) or []
 		for job_type in frappe.get_all("Scheduled Job Type", ("name", "method"), dict(stopped=0)):
-			if not job_type.method in queued_jobs:
+			if job_type.method not in queued_jobs:
 				# don't add it to queue if still pending
 				frappe.get_doc("Scheduled Job Type", job_type.name).enqueue()
 
@@ -171,15 +173,15 @@ def is_dormant(check_time=None):
 
 
 def _get_last_modified_timestamp(doctype):
-	timestamp = frappe.db.get_value(
-		doctype, filters={}, fieldname="modified", order_by="modified desc"
-	)
+	timestamp = frappe.db.get_value(doctype, filters={}, fieldname="modified", order_by="modified desc")
 	if timestamp:
 		return get_datetime(timestamp)
 
 
 @frappe.whitelist()
 def activate_scheduler():
+	from frappe.installer import update_site_config
+
 	frappe.only_for("Administrator")
 
 	if frappe.local.conf.maintenance_mode:

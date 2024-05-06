@@ -65,7 +65,10 @@ frappe.views.Workspace = class Workspace {
 		if (this.all_pages) {
 			frappe.workspaces = {};
 			for (let page of this.all_pages) {
-				frappe.workspaces[frappe.router.slug(page.name)] = { title: page.title };
+				frappe.workspaces[frappe.router.slug(page.name)] = {
+					title: page.title,
+					public: page.public,
+				};
 			}
 			this.make_sidebar();
 			reload && this.show();
@@ -156,6 +159,12 @@ frappe.views.Workspace = class Workspace {
 		if (Object.keys(root_pages).length === 0) {
 			sidebar_section.addClass("hidden");
 		}
+
+		$(".item-anchor").on("click", () => {
+			$(".list-sidebar.hidden-xs.hidden-sm").removeClass("opened");
+			$(".close-sidebar").css("display", "none");
+			$("body").css("overflow", "auto");
+		});
 
 		if (
 			sidebar_section.find(".sidebar-item-container").length &&
@@ -324,10 +333,10 @@ frappe.views.Workspace = class Workspace {
 		) {
 			default_page = {
 				name: localStorage.current_page,
-				public: localStorage.is_current_page_public == "true",
+				public: localStorage.is_current_page_public != "false",
 			};
 		} else if (Object.keys(this.all_pages).length !== 0) {
-			default_page = { name: this.all_pages[0].title, public: true };
+			default_page = { name: this.all_pages[0].title, public: this.all_pages[0].public };
 		} else {
 			default_page = { name: "Build", public: true };
 		}
@@ -348,14 +357,15 @@ frappe.views.Workspace = class Workspace {
 			`).appendTo(this.body);
 		}
 
-		if (this.all_pages) {
+		if (this.all_pages.length) {
 			this.create_page_skeleton();
 
-			let pages = page.public ? this.public_pages : this.private_pages;
+			let pages =
+				page.public && this.public_pages.length ? this.public_pages : this.private_pages;
 			let current_page = pages.filter((p) => p.title == page.name)[0];
 			this.content = current_page && JSON.parse(current_page.content);
 
-			this.add_custom_cards_in_content();
+			this.content && this.add_custom_cards_in_content();
 
 			$(".item-anchor").addClass("disable-click");
 
@@ -603,7 +613,7 @@ frappe.views.Workspace = class Workspace {
 			],
 			primary_action_label: __("Update"),
 			primary_action: (values) => {
-				values.title = frappe.utils.escape_html(values.title);
+				values.title = strip_html(values.title);
 				let is_title_changed = values.title != old_item.title;
 				let is_section_changed = values.is_public != old_item.public;
 				if (
@@ -1150,7 +1160,7 @@ frappe.views.Workspace = class Workspace {
 			],
 			primary_action_label: __("Create"),
 			primary_action: (values) => {
-				values.title = frappe.utils.escape_html(values.title);
+				values.title = strip_html(values.title);
 				if (!this.validate_page(values)) return;
 				d.hide();
 				this.initialize_editorjs_undo();
@@ -1213,6 +1223,7 @@ frappe.views.Workspace = class Workspace {
 
 						this.make_sidebar();
 						this.show_sidebar_actions();
+						localStorage.setItem("new_workspace", JSON.stringify(new_page));
 					});
 			},
 		});

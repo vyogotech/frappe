@@ -5,7 +5,6 @@ import json
 import os
 import subprocess  # nosec
 
-import requests
 from semantic_version import Version
 
 import frappe
@@ -119,9 +118,7 @@ def get_versions():
 		if versions[app]["branch"] != "master":
 			branch_version = app_hooks.get("{}_version".format(versions[app]["branch"]))
 			if branch_version:
-				versions[app]["branch_version"] = branch_version[0] + " ({})".format(
-					get_app_last_commit_ref(app)
-				)
+				versions[app]["branch_version"] = branch_version[0] + f" ({get_app_last_commit_ref(app)})"
 
 		try:
 			versions[app]["version"] = frappe.get_attr(app + ".__version__")
@@ -231,6 +228,7 @@ def check_release_on_github(app: str):
 	                organization name, if the application exists, otherwise None.
 	"""
 
+	import requests
 	from giturlparse import parse
 	from giturlparse.parser import ParserError
 

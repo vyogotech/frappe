@@ -34,12 +34,14 @@ frappe.views.ListSidebar = class ListSidebar {
 		) {
 			this.sidebar.find(".list-tags").remove();
 		} else {
-			this.sidebar.find(".list-stats").on("click", (e) => {
+			this.sidebar.find(".list-stats").on("show.bs.dropdown", (e) => {
 				this.reload_stats();
 			});
 		}
 
-		this.add_insights_banner();
+		if (frappe.user.has_role("System Manager")) {
+			this.add_insights_banner();
+		}
 	}
 
 	setup_views() {
@@ -187,6 +189,10 @@ frappe.views.ListSidebar = class ListSidebar {
 
 	get_stats() {
 		var me = this;
+
+		let dropdown_options = me.sidebar.find(".list-stats-dropdown .stat-result");
+		this.set_loading_state(dropdown_options);
+
 		frappe.call({
 			method: "frappe.desk.reportview.get_sidebar_stats",
 			type: "GET",
@@ -206,6 +212,14 @@ frappe.views.ListSidebar = class ListSidebar {
 				frappe.utils.setup_search(stats_dropdown, ".stat-link", ".stat-label");
 			},
 		});
+	}
+
+	set_loading_state(dropdown) {
+		dropdown.html(`<li>
+			<div class="empty-state">
+				${__("Loading...")}
+			</div>
+		</li>`);
 	}
 
 	render_stat(stats) {
@@ -256,9 +270,9 @@ frappe.views.ListSidebar = class ListSidebar {
 				this.insights_banner.remove();
 			}
 
-			const message = "Get more insights with";
+			const message = __("Get more insights with");
 			const link = "https://frappe.io/s/insights";
-			const cta = "Frappe Insights";
+			const cta = __("Frappe Insights");
 
 			this.insights_banner = $(`
 				<div style="position: relative;">

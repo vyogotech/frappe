@@ -182,7 +182,7 @@ class QuickListDialog extends WidgetDialog {
 	process_data(data) {
 		if (this.filter_group) {
 			let filters = this.filter_group.get_filters();
-			data.quick_list_filter = frappe.utils.get_filter_as_json(filters);
+			data.quick_list_filter = JSON.stringify(filters);
 		}
 
 		data.label = data.label ? data.label : data.document_type;
@@ -258,6 +258,15 @@ class CardDialog extends WidgetDialog {
 						reqd: 1,
 						get_options: (df) => {
 							return df.doc.link_type;
+						},
+						get_query: function (df) {
+							if (df.link_type == "DocType") {
+								return {
+									filters: {
+										istable: 0,
+									},
+								};
+							}
 						},
 					},
 					{
@@ -358,6 +367,7 @@ class ShortcutDialog extends WidgetDialog {
 								query: "frappe.core.report.permitted_documents_for_user.permitted_documents_for_user.query_doctypes",
 								filters: {
 									user: frappe.session.user,
+									include_single_doctypes: true,
 								},
 							};
 						};
@@ -383,7 +393,7 @@ class ShortcutDialog extends WidgetDialog {
 				onchange: () => {
 					const doctype = this.dialog.get_value("link_to");
 					if (doctype && this.dialog.get_value("type") == "DocType") {
-						frappe.model.with_doctype(doctype, () => {
+						frappe.model.with_doctype(doctype, async () => {
 							let meta = frappe.get_meta(doctype);
 
 							if (doctype && frappe.boot.single_types.includes(doctype)) {
@@ -394,8 +404,15 @@ class ShortcutDialog extends WidgetDialog {
 							}
 
 							const views = ["List", "Report Builder", "Dashboard", "New"];
-							if (meta.is_tree === "Tree") views.push("Tree");
+							if (meta.is_tree === 1) views.push("Tree");
 							if (frappe.boot.calendars.includes(doctype)) views.push("Calendar");
+
+							const response = await frappe.db.get_value(
+								"Kanban Board",
+								{ reference_doctype: doctype },
+								"name"
+							);
+							if (response?.message?.name) views.push("Kanban");
 
 							this.dialog.set_df_property("doc_view", "options", views.join("\n"));
 						});
@@ -428,10 +445,37 @@ class ShortcutDialog extends WidgetDialog {
 					if (this.dialog) {
 						let doctype = this.dialog.get_value("link_to");
 						let is_single = frappe.boot.single_types.includes(doctype);
-						return state.type == "DocType" && !is_single;
+						return doctype && state.type == "DocType" && !is_single;
 					}
 
 					return false;
+				},
+				onchange: () => {
+					if (this.dialog.get_value("doc_view") == "Kanban") {
+						this.dialog.fields_dict.kanban_board.get_query = () => {
+							return {
+								filters: {
+									reference_doctype: this.dialog.get_value("link_to"),
+								},
+							};
+						};
+					} else {
+						this.dialog.fields_dict.link_to.get_query = null;
+					}
+				},
+			},
+			{
+				fieldtype: "Link",
+				fieldname: "kanban_board",
+				label: "Kanban Board",
+				options: "Kanban Board",
+				depends_on: () => {
+					let doc_view = this.dialog?.get_value("doc_view");
+					return doc_view == "Kanban";
+				},
+				mandatory_depends_on: () => {
+					let doc_view = this.dialog?.get_value("doc_view");
+					return doc_view == "Kanban";
 				},
 			},
 			{
@@ -505,7 +549,7 @@ class ShortcutDialog extends WidgetDialog {
 	process_data(data) {
 		if (this.dialog.get_value("type") == "DocType" && this.filter_group) {
 			let filters = this.filter_group.get_filters();
-			data.stats_filter = frappe.utils.get_filter_as_json(filters);
+			data.stats_filter = JSON.stringify(filters);
 		}
 
 		data.label = data.label ? data.label : frappe.model.unscrub(data.link_to);
@@ -714,6 +758,11 @@ class CustomBlockDialog extends WidgetDialog {
 				label: "Custom Block Name",
 				options: "Custom HTML Block",
 				reqd: 1,
+				get_query: () => {
+					return {
+						query: "frappe.desk.doctype.custom_html_block.custom_html_block.get_custom_blocks_for_user",
+					};
+				},
 			},
 		];
 	}

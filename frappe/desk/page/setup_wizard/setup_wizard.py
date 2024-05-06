@@ -13,7 +13,6 @@ from . import install_fixtures
 
 
 def get_setup_stages(args):
-
 	# App setup stage functions should not include frappe.db.commit
 	# That is done by frappe after successful completion of all stages
 	stages = [
@@ -33,9 +32,7 @@ def get_setup_stages(args):
 			# post executing hooks
 			"status": "Wrapping up",
 			"fail_msg": "Failed to complete setup",
-			"tasks": [
-				{"fn": run_post_setup_complete, "args": args, "fail_msg": "Failed to complete setup"}
-			],
+			"tasks": [{"fn": run_post_setup_complete, "args": args, "fail_msg": "Failed to complete setup"}],
 		}
 	)
 
@@ -376,7 +373,7 @@ def email_setup_wizard_exception(traceback, args):
 		traceback=traceback,
 		args="\n".join(pretty_args),
 		user=frappe.session.user,
-		headers=frappe.request.headers,
+		headers=frappe.request.headers if frappe.request else "[no request]",
 	)
 
 	frappe.sendmail(

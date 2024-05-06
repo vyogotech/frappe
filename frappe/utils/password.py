@@ -25,9 +25,7 @@ class LegacyPassword(pbkdf2_sha256):
 		# check if this is a mysql hash
 		# it is possible that we will generate a false positive if the users password happens to be 40 hex chars proceeded
 		# by an * char, but this seems highly unlikely
-		if not (
-			secret[0] == "*" and len(secret) == 41 and all(c in string.hexdigits for c in secret[1:])
-		):
+		if not (secret[0] == "*" and len(secret) == 41 and all(c in string.hexdigits for c in secret[1:])):
 			secret = mysql41.hash(secret + self.salt.decode("utf-8"))
 		return super()._calc_checksum(secret)
 
@@ -219,7 +217,17 @@ def decrypt(txt, encryption_key=None):
 		return cstr(cipher_suite.decrypt(encode(txt)))
 	except InvalidToken:
 		# encryption_key in site_config is changed and not valid
-		frappe.throw(_("Encryption key is invalid! Please check site_config.json"))
+		frappe.throw(
+			_("Encryption key is invalid! Please check site_config.json")
+			+ "<br>"
+			+ _(
+				"If you have recently restored the site you may need to copy the site config contaning original Encryption Key."
+			)
+			+ "<br>"
+			+ _(
+				"Please visit https://frappecloud.com/docs/sites/migrate-an-existing-site#encryption-key for more information."
+			),
+		)
 
 
 def get_encryption_key():
@@ -234,4 +242,4 @@ def get_encryption_key():
 
 
 def get_password_reset_limit():
-	return frappe.db.get_single_value("System Settings", "password_reset_limit") or 0
+	return frappe.get_system_settings("password_reset_limit") or 3

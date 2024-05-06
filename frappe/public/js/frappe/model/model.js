@@ -107,10 +107,10 @@ $.extend(frappe.model, {
 					cur_frm.doc.doctype === doc.doctype &&
 					cur_frm.doc.name === doc.name
 				) {
-					if (data.modified !== cur_frm.doc.modified) {
+					if (data.modified !== cur_frm.doc.modified && !frappe.ui.form.is_saving) {
 						if (!cur_frm.is_dirty()) {
-							cur_frm.reload_doc();
-						} else if (!frappe.ui.form.is_saving) {
+							cur_frm.debounced_reload_doc();
+						} else {
 							doc.__needs_refresh = true;
 							cur_frm.show_conflict_message();
 						}
@@ -343,6 +343,11 @@ $.extend(frappe.model, {
 	can_delete: function (doctype) {
 		if (!doctype) return false;
 		return frappe.boot.user.can_delete.indexOf(doctype) !== -1;
+	},
+
+	can_submit: function (doctype) {
+		if (!doctype) return false;
+		return frappe.boot.user.can_submit.indexOf(doctype) !== -1;
 	},
 
 	can_cancel: function (doctype) {

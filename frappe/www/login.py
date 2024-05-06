@@ -5,8 +5,6 @@ import frappe
 import frappe.utils
 from frappe import _
 from frappe.auth import LoginManager
-from frappe.integrations.doctype.ldap_settings.ldap_settings import LDAPSettings
-from frappe.integrations.oauth2_logins import decoder_compat
 from frappe.rate_limiter import rate_limit
 from frappe.utils import cint, get_url
 from frappe.utils.data import escape_html
@@ -85,7 +83,10 @@ def get_context(context):
 			)
 			context["social_login"] = True
 
-	context["ldap_settings"] = LDAPSettings.get_ldap_client_settings()
+	if cint(frappe.db.get_value("LDAP Settings", "LDAP Settings", "enabled")):
+		from frappe.integrations.doctype.ldap_settings.ldap_settings import LDAPSettings
+
+		context["ldap_settings"] = LDAPSettings.get_ldap_client_settings()
 
 	login_label = [_("Email")]
 
@@ -120,7 +121,6 @@ def login_via_token(login_token: str):
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=5, seconds=60 * 60)
 def send_login_link(email: str):
-
 	expiry = frappe.get_system_settings("login_with_email_link_expiry") or 10
 	link = _generate_temporary_login_link(email, expiry)
 
@@ -143,17 +143,19 @@ def _generate_temporary_login_link(email: str, expiry: int):
 	assert isinstance(email, str)
 
 	if not frappe.db.exists("User", email):
-		frappe.throw(
-			_("User with email address {0} does not exist").format(email), frappe.DoesNotExistError
-		)
+		frappe.throw(_("User with email address {0} does not exist").format(email), frappe.DoesNotExistError)
 	key = frappe.generate_hash()
 	frappe.cache().set_value(f"one_time_login_key:{key}", email, expires_in_sec=expiry * 60)
 
 	return get_url(f"/api/method/frappe.www.login.login_via_key?key={key}")
 
 
+def get_login_with_email_link_ratelimit() -> int:
+	return frappe.get_system_settings("rate_limit_email_link_login") or 5
+
+
 @frappe.whitelist(allow_guest=True, methods=["GET"])
-@rate_limit(limit=5, seconds=60 * 60)
+@rate_limit(limit=get_login_with_email_link_ratelimit, seconds=60 * 60)
 def login_via_key(key: str):
 	cache_key = f"one_time_login_key:{key}"
 	email = frappe.cache().get_value(cache_key)
