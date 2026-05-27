@@ -1051,7 +1051,7 @@ class TestSetupWizardCLI(BaseTestCommands):
 			patch(
 				"frappe.desk.page.setup_wizard.setup_wizard.setup_complete",
 				return_value={"status": "ok"},
-			) as setup_complete,
+			),
 		):
 			with cli(
 				frappe.commands.wizard.setup_wizard,
@@ -1064,7 +1064,6 @@ class TestSetupWizardCLI(BaseTestCommands):
 
 		init.assert_called_once_with(site=TEST_SITE)
 		destroy.assert_called_once()
-		setup_args = setup_complete.call_args.args[0]
 
 	def test_setup_wizard_skips_completed_site(self):
 		import frappe.commands.wizard
