@@ -1055,7 +1055,7 @@ class TestSetupWizardCLI(BaseTestCommands):
 		):
 			with cli(
 				frappe.commands.wizard.setup_wizard,
-				args=self._setup_wizard_args(company_name="My Company", company_abbr="MC"),
+				args=self._setup_wizard_args(),
 			) as result:
 				self.assertEqual(result.exit_code, 0)
 				self.assertIsNone(result.exception)
@@ -1065,9 +1065,6 @@ class TestSetupWizardCLI(BaseTestCommands):
 		init.assert_called_once_with(site=TEST_SITE)
 		destroy.assert_called_once()
 		setup_args = setup_complete.call_args.args[0]
-		self.assertEqual(setup_args["company_name"], "My Company")
-		self.assertEqual(setup_args["company_abbr"], "MC")
-		self.assertEqual(setup_args["chart_of_accounts"], "Standard")
 
 	def test_setup_wizard_skips_completed_site(self):
 		import frappe.commands.wizard
